@@ -59,6 +59,7 @@ Handle g_hSDK_CTerrorPlayer_RoundRespawn;
 Handle g_hSDK_SurvivorBot_SetHumanSpectator;
 Handle g_hSDK_CTerrorPlayer_TakeOverBot;
 Handle g_hSDK_CTerrorPlayer_CanBecomeGhost;
+Handle g_hSDK_CTerrorPlayer_SetBecomeGhostAt;
 Handle g_hSDK_CTerrorPlayer_GoAwayFromKeyboard;
 Handle g_hSDK_CDirector_AreWanderersAllowed;
 Handle g_hSDK_CDirector_IsFinaleEscapeInProgress;
@@ -77,14 +78,14 @@ Handle g_hSDK_CNavMesh_GetNearestNavArea;
 Handle g_hSDK_TerrorNavArea_FindRandomSpot;
 Handle g_hSDK_IsVisibleToPlayer;
 Handle g_hSDK_CDirector_HasAnySurvivorLeftSafeArea;
-Handle g_hSDK_CDirector_IsAnySurvivorInExitCheckpoint;
+// Handle g_hSDK_CDirector_IsAnySurvivorInExitCheckpoint;
 Handle g_hSDK_CDirector_AreAllSurvivorsInFinaleArea;
-// Handle g_hSDK_TerrorNavMesh_GetInitialCheckpoint;
-// Handle g_hSDK_TerrorNavMesh_GetLastCheckpoint;
-// Handle g_hSDK_TerrorNavMesh_IsInInitialCheckpoint_NoLandmark;
-// Handle g_hSDK_TerrorNavMesh_IsInExitCheckpoint_NoLandmark;
-// Handle g_hSDK_Checkpoint_ContainsArea;
-Handle g_hSDK_CDirector_IsAnySurvivorInStartArea;
+Handle g_hSDK_TerrorNavMesh_GetInitialCheckpoint;
+Handle g_hSDK_TerrorNavMesh_GetLastCheckpoint;
+Handle g_hSDK_TerrorNavMesh_IsInInitialCheckpoint_NoLandmark;
+Handle g_hSDK_TerrorNavMesh_IsInExitCheckpoint_NoLandmark;
+Handle g_hSDK_Checkpoint_ContainsArea;
+// Handle g_hSDK_CDirector_IsAnySurvivorInStartArea;
 Handle g_hSDK_CTerrorGameRules_GetNumChaptersForMissionAndMode;
 Handle g_hSDK_CDirector_GetGameModeBase;
 Handle g_hSDK_KeyValues_GetString;
@@ -242,6 +243,11 @@ int Native_ReadMemoryString(Handle plugin, int numParams) // Native "L4D_ReadMem
 int Native_GetServerOS(Handle plugin, int numParams) // Native "L4D_GetServerOS"
 {
 	return g_bLinuxOS;
+}
+
+int Native_Left4DHooks_Version(Handle plugin, int numParams) // Native "Left4DHooks_Version"
+{
+	return PLUGIN_VERLONG;
 }
 
 
@@ -983,6 +989,31 @@ int Native_CDirector_IsAnySurvivorInStartArea(Handle plugin, int numParams) // N
 {
 	if( g_bLeft4Dead2 )
 	{
+		for( int i = 1; i <= MaxClients; i++ )
+		{
+			if( IsClientInGame(i) && GetClientTeam(i) == 2 && IsPlayerAlive(i) && IsInFirstCheckpoint(i) )
+			{
+				return true;
+			}
+		}
+	}
+	else
+	{
+		for( int i = 1; i <= MaxClients; i++ )
+		{
+			if( g_bCheckpointFirst[i] && IsClientInGame(i) && GetClientTeam(i) == 2 && IsPlayerAlive(i) )
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+
+	/*
+	// Removed this due to not always reporting true
+	if( g_bLeft4Dead2 )
+	{
 		ValidateAddress(g_pDirector, "g_pDirector");
 		ValidateNatives(g_hSDK_CDirector_IsAnySurvivorInStartArea, "CDirector::IsAnySurvivorInStartArea");
 
@@ -999,9 +1030,24 @@ int Native_CDirector_IsAnySurvivorInStartArea(Handle plugin, int numParams) // N
 
 		return false;
 	}
+	*/
 }
 
-int Native_CDirector_IsAnySurvivorInExitCheckpoint(Handle plugin, int numParams) // Native "L4D_IsAnySurvivorInCheckpoint"
+int Native_CDirector_IsAnySurvivorInCheckpoint(Handle plugin, int numParams) // Native "L4D_IsAnySurvivorInCheckpoint"
+{
+	for( int i = 1; i <= MaxClients; i++ )
+	{
+		if( IsClientInGame(i) && GetClientTeam(i) == 2 && IsPlayerAlive(i) && (IsInFirstCheckpoint(i) || IsInLastCheckpoint(i)) )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/*
+int Native_CDirector_IsAnySurvivorInExitCheckpoint(Handle plugin, int numParams) // Native "L4D_IsAnySurvivorInExitCheckpoint"
 {
 	ValidateAddress(g_pDirector, "g_pDirector");
 	ValidateNatives(g_hSDK_CDirector_IsAnySurvivorInExitCheckpoint, "CDirector::IsAnySurvivorInExitCheckpoint");
@@ -1009,11 +1055,12 @@ int Native_CDirector_IsAnySurvivorInExitCheckpoint(Handle plugin, int numParams)
 	//PrintToServer("#### CALL g_hSDK_CDirector_IsAnySurvivorInExitCheckpoint");
 	return SDKCall(g_hSDK_CDirector_IsAnySurvivorInExitCheckpoint, g_pDirector);
 }
+// */
 
 int Native_CDirector_AreAllSurvivorsInFinaleArea(Handle plugin, int numParams) // Native "L4D_AreAllSurvivorsInFinaleArea"
 {
 	ValidateAddress(g_pDirector, "g_pDirector");
-	ValidateNatives(g_hSDK_CDirector_IsAnySurvivorInExitCheckpoint, "CDirector::AreAllSurvivorsInFinaleArea");
+	ValidateNatives(g_hSDK_CDirector_AreAllSurvivorsInFinaleArea, "CDirector::AreAllSurvivorsInFinaleArea");
 
 	//PrintToServer("#### CALL g_hSDK_CDirector_AreAllSurvivorsInFinaleArea");
 	return SDKCall(g_hSDK_CDirector_AreAllSurvivorsInFinaleArea, g_pDirector);
@@ -1022,28 +1069,60 @@ int Native_CDirector_AreAllSurvivorsInFinaleArea(Handle plugin, int numParams) /
 int Native_IsInFirstCheckpoint(Handle plugin, int numParams) // Native "L4D_IsInFirstCheckpoint"
 {
 	int client = GetNativeCell(1);
-	return InCheckpoint(client, true);
+	return IsInFirstCheckpoint(client);
+}
+
+bool IsInFirstCheckpoint(int client)
+{
+	if( g_bLeft4Dead2 )
+	{
+		int area = SDKCall(g_hSDK_CTerrorPlayer_GetLastKnownArea, client);
+		if( area == 0 ) return false;
+
+		int nav1 = SDKCall(g_hSDK_TerrorNavMesh_GetInitialCheckpoint, g_pNavMesh);
+		if( nav1 )
+		{
+			if( SDKCall(g_hSDK_Checkpoint_ContainsArea, nav1, area) )
+				return true;
+		}
+
+		if( SDKCall(g_hSDK_TerrorNavMesh_IsInInitialCheckpoint_NoLandmark, g_pNavMesh, area) )
+			return true;
+	}
+	else
+	{
+		return g_bCheckpointFirst[client];
+	}
+
+	return false;
 }
 
 int Native_IsInLastCheckpoint(Handle plugin, int numParams) // Native "L4D_IsInLastCheckpoint"
 {
 	int client = GetNativeCell(1);
-	return InCheckpoint(client, false);
+	return IsInLastCheckpoint(client);
 }
 
-bool InCheckpoint(int client, bool start)
+bool IsInLastCheckpoint(int client)
 {
-	if( g_bCheckpoint[client] )
+	if( g_bLeft4Dead2 )
 	{
-		ValidateAddress(g_iOff_m_flow, "m_flow");
-		ValidateNatives(g_hSDK_CTerrorPlayer_GetLastKnownArea, "CTerrorPlayer::GetLastKnownArea");
-
-		//PrintToServer("#### CALL InCheckpoint %d g_hSDK_CTerrorPlayer_GetLastKnownArea", start);
 		int area = SDKCall(g_hSDK_CTerrorPlayer_GetLastKnownArea, client);
 		if( area == 0 ) return false;
 
-		float flow = view_as<float>(LoadFromAddress(view_as<Address>(area + g_iOff_m_flow), NumberType_Int32));
-		return (start ? flow < 3000.0 : flow > 3000.0);
+		int nav1 = SDKCall(g_hSDK_TerrorNavMesh_GetLastCheckpoint, g_pNavMesh);
+		if( nav1 )
+		{
+			if( SDKCall(g_hSDK_Checkpoint_ContainsArea, nav1, area) )
+				return true;
+		}
+
+		if( SDKCall(g_hSDK_TerrorNavMesh_IsInExitCheckpoint_NoLandmark, g_pNavMesh, area) )
+			return true;
+	}
+	else
+	{
+		return g_bCheckpointLast[client];
 	}
 
 	return false;
@@ -1052,6 +1131,11 @@ bool InCheckpoint(int client, bool start)
 #define DOOR_RANGE_TOLLERANCE 2000.0
 
 int Native_GetCheckpointFirst(Handle plugin, int numParams) // Native "L4D_GetCheckpointFirst"
+{
+	return GetCheckpointFirst();
+}
+
+int GetCheckpointFirst()
 {
 	// Cache
 	static int door;
@@ -1098,6 +1182,11 @@ int Native_GetCheckpointFirst(Handle plugin, int numParams) // Native "L4D_GetCh
 }
 
 int Native_GetCheckpointLast(Handle plugin, int numParams) // Native "L4D_GetCheckpointLast"
+{
+	return GetCheckpointLast();
+}
+
+int GetCheckpointLast()
 {
 	// Cache
 	static int door;
@@ -1226,11 +1315,26 @@ int Native_CBaseGrenade_Detonate(Handle plugin, int numParams) // Native "L4D_De
 
 	int entity = GetNativeCell(1);
 
-	//PrintToServer("#### CALL g_hSDK_CBaseGrenade_Detonate");
+	//PrintToServer("#### CALL g_hSDK_CBaseGrenade_Detonate 1");
+	// if( GetEntPropFloat(entity, Prop_Data, "m_flCreateTime") == GetGameTime() )
+		// RequestFrame(OnFrameDetonate, EntIndexToEntRef(entity));
+	// else
 	SDKCall(g_hSDK_CBaseGrenade_Detonate, entity);
 
 	return 0;
 }
+
+/*
+void OnFrameDetonate(int entity)
+{
+	entity = EntRefToEntIndex(entity);
+	if( entity != -1 )
+	{
+		//PrintToServer("#### CALL g_hSDK_CBaseGrenade_Detonate 2");
+		SDKCall(g_hSDK_CBaseGrenade_Detonate, entity);
+	}
+}
+// */
 
 /*
 int Native_CInferno_StartBurning(Handle plugin, int numParams) // Native "L4D_StartBurning"
@@ -1340,6 +1444,10 @@ int Native_CPipeBombProjectile_Create(Handle plugin, int numParams) // Native "L
 
 	//PrintToServer("#### CALL g_hSDK_CPipeBombProjectile_Create");
 	return SDKCall(g_hSDK_CPipeBombProjectile_Create, vPos, vAng, vAng, vAng, client, 2.0);
+
+	// int entity = SDKCall(g_hSDK_CPipeBombProjectile_Create, vPos, vAng, vAng, vAng, client, 2.0);
+	// SetEntPropFloat(entity, Prop_Data, "m_flCreateTime", GetGameTime());
+	// return entity;
 }
 
 int Native_CMolotovProjectile_Create(Handle plugin, int numParams) // Native "L4D_MolotovPrj"
@@ -1353,6 +1461,10 @@ int Native_CMolotovProjectile_Create(Handle plugin, int numParams) // Native "L4
 
 	//PrintToServer("#### CALL g_hSDK_CMolotovProjectile_Create");
 	return SDKCall(g_hSDK_CMolotovProjectile_Create, vPos, vAng, vAng, vAng, client, 2.0);
+
+	// int entity = SDKCall(g_hSDK_CMolotovProjectile_Create, vPos, vAng, vAng, vAng, client, 2.0);
+	// SetEntPropFloat(entity, Prop_Data, "m_flCreateTime", GetGameTime());
+	// return entity;
 }
 
 int Native_CVomitJarProjectile_Create(Handle plugin, int numParams) // Native "L4D2_VomitJarPrj"
@@ -1366,6 +1478,10 @@ int Native_CVomitJarProjectile_Create(Handle plugin, int numParams) // Native "L
 
 	//PrintToServer("#### CALL g_hSDK_CVomitJarProjectile_Create");
 	return SDKCall(g_hSDK_CVomitJarProjectile_Create, vPos, vAng, vAng, vAng, client, 2.0);
+
+	// int entity = SDKCall(g_hSDK_CVomitJarProjectile_Create, vPos, vAng, vAng, vAng, client, 2.0);
+	// SetEntPropFloat(entity, Prop_Data, "m_flCreateTime", GetGameTime());
+	// return entity;
 }
 
 int Native_CGrenadeLauncher_Projectile_Create(Handle plugin, int numParams) // Native "L4D2_GrenadeLauncherPrj"
@@ -1379,6 +1495,10 @@ int Native_CGrenadeLauncher_Projectile_Create(Handle plugin, int numParams) // N
 
 	//PrintToServer("#### CALL g_hSDK_CGrenadeLauncher_Projectile_Create");
 	return SDKCall(g_hSDK_CGrenadeLauncher_Projectile_Create, vPos, vAng, vAng, vAng, client, 2.0);
+
+	// int entity = SDKCall(g_hSDK_CGrenadeLauncher_Projectile_Create, vPos, vAng, vAng, vAng, client, 2.0);
+	// SetEntPropFloat(entity, Prop_Data, "m_flCreateTime", GetGameTime());
+	// return entity;
 }
 
 int Native_CSpitterProjectile_Create(Handle plugin, int numParams) // Native "L4D2_SpitterPrj"
@@ -1394,6 +1514,7 @@ int Native_CSpitterProjectile_Create(Handle plugin, int numParams) // Native "L4
 
 	//PrintToServer("#### CALL g_hSDK_CSpitterProjectile_Create");
 	int entity = SDKCall(g_hSDK_CSpitterProjectile_Create, vPos, vAng, vAng, vAng, client);
+	// SetEntPropFloat(entity, Prop_Data, "m_flCreateTime", GetGameTime());
 
 	// Not watching for acid damage
 	if( !g_bAcidWatch )
@@ -1421,11 +1542,14 @@ int Native_CSpitterProjectile_Create(Handle plugin, int numParams) // Native "L4
 void OnAcidDamage(int victim, int attacker, int inflictor, float damage, int damagetype)
 {
 	// Emit sound when taking acid damage
-	if( damage > 0 && damagetype == (DMG_ENERGYBEAM|DMG_RADIATION) && attacker > 0 && attacker < MaxClients && IsClientInGame(attacker) && GetClientTeam(attacker) != 3 )
+	if( damage > 0 )
 	{
-		float vPos[3];
-		GetClientAbsOrigin(victim, vPos);
-		EmitSoundToAll(g_sAcidSounds[GetRandomInt(0, sizeof(g_sAcidSounds) - 1)], _, SNDCHAN_AUTO, 85, _, 0.55, GetRandomInt(95, 105), _, vPos);
+		if( ((damagetype == (DMG_ENERGYBEAM|DMG_RADIATION) && attacker > 0 && attacker <= MaxClients && IsClientInGame(attacker) && GetClientTeam(attacker) != 3)) || (damagetype == (DMG_ENERGYBEAM|DMG_RADIATION|DMG_PREVENT_PHYSICS_FORCE) && attacker > MaxClients) )
+		{
+			float vPos[3];
+			GetClientAbsOrigin(victim, vPos);
+			EmitSoundToAll(g_sAcidSounds[GetRandomInt(0, sizeof(g_sAcidSounds) - 1)], _, SNDCHAN_AUTO, 85, _, 0.55, GetRandomInt(95, 105), _, vPos);
+		}
 	}
 	
 }
@@ -2460,7 +2584,7 @@ int Native_GetIntMeleeAttribute(Handle plugin, int numParams) // Native "L4D2_Ge
 	if( ptr != -1 )
 	{
 		attr = L4D2IntMeleeWeapon_Offsets[attr]; // Offset
-		ptr = LoadFromAddress(view_as<Address>(ptr + attr), NumberType_Int32);
+		ptr = LoadFromAddress(view_as<Address>(ptr + attr), NumberType_Int16);
 	}
 
 	return ptr;
@@ -2515,7 +2639,7 @@ int Native_SetIntMeleeAttribute(Handle plugin, int numParams) // Native "L4D2_Se
 	{
 		int value = GetNativeCell(3);
 		attr = L4D2IntMeleeWeapon_Offsets[attr]; // Offset
-		StoreToAddress(view_as<Address>(ptr + attr), value, NumberType_Int32, false);
+		StoreToAddress(view_as<Address>(ptr + attr), value, NumberType_Int16, false);
 	}
 
 	return 0;
@@ -2918,6 +3042,19 @@ int Native_CTerrorPlayer_CanBecomeGhost(Handle plugin, int numParams) // Native 
 
 	//PrintToServer("#### CALL g_hSDK_CTerrorPlayer_CanBecomeGhost");
 	return SDKCall(g_hSDK_CTerrorPlayer_CanBecomeGhost, client, true);
+}
+
+int Native_CTerrorPlayer_SetBecomeGhostAt(Handle plugin, int numParams) // Native "L4D_SetBecomeGhostAt"
+{
+	ValidateNatives(g_hSDK_CTerrorPlayer_SetBecomeGhostAt, "CTerrorPlayer::SetBecomeGhostAt");
+
+	int client = GetNativeCell(1);
+	float time = GetNativeCell(2);
+
+	//PrintToServer("#### CALL g_hSDK_CTerrorPlayer_SetBecomeGhostAt");
+	SDKCall(g_hSDK_CTerrorPlayer_SetBecomeGhostAt, client, time);
+
+	return 0;
 }
 
 int Native_CTerrorPlayer_GoAwayFromKeyboard(Handle plugin, int numParams) // Native "L4D_GoAwayFromKeyboard"

@@ -246,6 +246,7 @@ void SetupForwardsNatives()
 	CreateNative("L4D_GetEntityFromAddress",		 				Native_GetEntityFromAddress);
 	CreateNative("L4D_ReadMemoryString",		 					Native_ReadMemoryString);
 	CreateNative("L4D_GetServerOS",		 							Native_GetServerOS);
+	CreateNative("Left4DHooks_Version",		 						Native_Left4DHooks_Version);
 	CreateNative("L4D_GetGameModeType",		 						Native_Internal_GetGameMode);
 	CreateNative("L4D2_IsGenericCooperativeMode",		 			Native_CTerrorGameRules_IsGenericCooperativeMode);
 	CreateNative("L4D_IsCoopMode",		 							Native_Internal_IsCoopMode);
@@ -274,7 +275,8 @@ void SetupForwardsNatives()
 	CreateNative("L4D_GetLastKnownArea",		 					Native_CTerrorPlayer_GetLastKnownArea);
 	CreateNative("L4D_HasAnySurvivorLeftSafeArea",		 			Native_CDirector_HasAnySurvivorLeftSafeArea);
 	CreateNative("L4D_IsAnySurvivorInStartArea",		 			Native_CDirector_IsAnySurvivorInStartArea);
-	CreateNative("L4D_IsAnySurvivorInCheckpoint",		 			Native_CDirector_IsAnySurvivorInExitCheckpoint);
+	CreateNative("L4D_IsAnySurvivorInCheckpoint",		 			Native_CDirector_IsAnySurvivorInCheckpoint);
+	// CreateNative("L4D_IsAnySurvivorInExitCheckpoint",		 		Native_CDirector_IsAnySurvivorInCheckpoint);
 	CreateNative("L4D_AreAllSurvivorsInFinaleArea",		 			Native_CDirector_AreAllSurvivorsInFinaleArea);
 	CreateNative("L4D_IsInFirstCheckpoint",		 					Native_IsInFirstCheckpoint);
 	CreateNative("L4D_IsInLastCheckpoint",		 					Native_IsInLastCheckpoint);
@@ -291,6 +293,7 @@ void SetupForwardsNatives()
 	CreateNative("L4D_SetHumanSpec",								Native_SurvivorBot_SetHumanSpectator);
 	CreateNative("L4D_TakeOverBot",									Native_CTerrorPlayer_TakeOverBot);
 	CreateNative("L4D_CanBecomeGhost",								Native_CTerrorPlayer_CanBecomeGhost);
+	CreateNative("L4D_SetBecomeGhostAt",							Native_CTerrorPlayer_SetBecomeGhostAt);
 	CreateNative("L4D_IsFinaleEscapeInProgress",					Native_CDirector_IsFinaleEscapeInProgress);
 
 	// L4D2 only:
