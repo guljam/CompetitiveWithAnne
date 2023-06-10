@@ -17,6 +17,14 @@
 		{
 			"message" "最新版本"
 		}
+		"exec vote/Anne/Anne22-12.cfg"
+		{
+			"message" "22-12月版本"
+		}
+		"exec vote/Anne/Anne22-11.cfg"
+		{
+			"message" "22-11月版本"
+		}
 		"exec vote/Anne/Anne22-10.cfg"
 		{
 			"message" "22-10月版本"
@@ -56,27 +64,27 @@
 		{
 			"message" "关闭多人运动"
 		}
-		"exec vote/duoren/duoren2.cfg"
+		"exec vote/Anneduoren/duoren2.cfg"
 		{
 			"message" "2人运动"
 		}
-		"exec vote/duoren/duoren3.cfg"
+		"exec vote/Anneduoren/duoren3.cfg"
 		{
 			"message" "3人运动"
 		}
-		"exec vote/duoren/duoren5.cfg"
+		"exec vote/Anneduoren/duoren5.cfg"
 		{
 			"message" "5人运动"
 		}
-		"exec vote/duoren/duoren6.cfg"
+		"exec vote/Anneduoren/duoren6.cfg"
 		{
 			"message" "6人运动"
 		}
-		"exec vote/duoren/duoren7.cfg"
+		"exec vote/Anneduoren/duoren7.cfg"
 		{
 			"message" "7人运动"
 		}
-		"exec vote/duoren/duoren8.cfg"
+		"exec vote/Anneduoren/duoren8.cfg"
 		{
 			"message" "8人运动"
 		}
@@ -251,6 +259,17 @@
 			"message" "20秒"
 		}
 	}
+	"刷特模式"
+	{
+		"sm_cvar inf_EnableAutoSpawnTime 1"
+		{
+			"message" "自动时间刷特[23-01版本起有效]"
+		}
+		"sm_cvar inf_EnableAutoSpawnTime 0"
+		{
+			"message" "固定时间刷特[23-01版本起有效]"
+		}
+	}
 	"特感最低生成距离"
 	{
 		"sm_cvar inf_SpawnDistanceMin 250.0"
@@ -350,6 +369,10 @@
 		"exec vote/hard_off.cfg"
 		{
 			"message" "关闭特感属性增强"
+		}
+		"sm_cvar specrates_fulltickspecnum 1"
+		{
+			"message" "限制旁观tick"
 		}
 		"sm_cvar sb_fix_enabled 1"
 		{
@@ -457,9 +480,9 @@
 		{
 			"message" "关闭Tank连跳"
 		}
-		"sm_cvar ai_TankSneakTime 6.0"
+		"sm_cvar ai_TankSneakTime 8.0"
 		{
-			"message" "开启狡猾Tank（特感生成6s前才压制，）"
+			"message" "开启狡猾Tank（特感生成8s前才压制，）"
 		}
 		"sm_cvar ai_TankSneakTime 0.0"
 		{

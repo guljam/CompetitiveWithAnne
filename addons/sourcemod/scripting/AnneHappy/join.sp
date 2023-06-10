@@ -34,6 +34,7 @@
 
 #define IsValidClient(%1)		(1 <= %1 <= MaxClients && IsClientInGame(%1))
 #define IsValidAliveClient(%1)	(1 <= %1 <= MaxClients && IsClientInGame(%1) && IsPlayerAlive(%1))
+#define GETBOTINTERVAL 3.0
 
 public Plugin myinfo =
 {
@@ -46,8 +47,12 @@ public Plugin myinfo =
 #define UPDATE_URL_ANNE "http://dl.trygek.com/left4dead2/addons/sourcemod/Anne_Updater.txt"
 #define UPDATE_URL_NEKO "http://dl.trygek.com/left4dead2/addons/sourcemod/Neko_Updater.txt"
 #define UPDATE_URL_VERSUS "http://dl.trygek.com/left4dead2/addons/sourcemod/Versus_Updater.txt"
+#define UPDATE_URL_ANNEALL "http://dl.trygek.com/left4dead2/addons/sourcemod/Anne_Updater_All.txt"
 
-bool  g_bUpdateSystemAvailable = false, g_bGroupSystemAvailable = false;
+bool  
+	g_bEnableGetbotCommand[MAXPLAYERS] = { false },
+	g_bUpdateSystemAvailable = false, 
+	g_bGroupSystemAvailable = false;
 
 ConVar
 	hCvarMotdTitle,
@@ -55,7 +60,10 @@ ConVar
 	hCvarEnableAutoupdate,
 	hCvarEnableInf,
 	hCvarKickFamilyAccount,
-	g_cvSvAllowLobbyCo,
+	hCvarLobbyControl,
+	hCvarSteamgroupExclusive,
+	hCvarGamemode,
+	hCvarSvAllowLobbyCo,
 	hCvarEnableAutoRemoveLobby,
 	hCvarIPUrl;
 
@@ -65,11 +73,17 @@ public void OnPluginStart()
 	hCvarEnableInf = CreateConVar("join_enable_inf", "1", "是否可以开启加入特感", _, true, 0.0, true, 1.0);
 	hCvarEnableAutoRemoveLobby = CreateConVar("join_enable_autoremovelobby", "0", "大厅满了是否自动删除大厅", _, true, 0.0, true, 1.0);
 	hCvarKickFamilyAccount = CreateConVar("join_enable_kickfamilyaccount", "1", "是否开启踢出家庭共享账户", _, true, 0.0, true, 1.0);
-	hCvarEnableAutoupdate = CreateConVar("join_autoupdate", "1", "是否开启AnneHappy核心插件自动更新（不常更新插件包的建议关闭）", _, true, 0.0, true, 3.0);
-	g_cvSvAllowLobbyCo =	FindConVar("sv_allow_lobby_connect_only");
+	hCvarLobbyControl = CreateConVar("join_enable_autolobbycontrol", "0", "是否开启自动大厅控制，战役模式开启好友大厅，对抗模式开启公共大厅（server.cfg中删去sv_steamgroup_exclusive）", _, true, 0.0, true, 1.0);
+	hCvarEnableAutoupdate = CreateConVar("join_autoupdate", "0", "是否开启AnneHappy核心插件自动更新（不常更新插件包的建议关闭）", _, true, 0.0, true, 4.0);
+	hCvarSvAllowLobbyCo = FindConVar("sv_allow_lobby_connect_only");
+	hCvarSteamgroupExclusive = FindConVar("sv_steamgroup_exclusive");
+	hCvarGamemode = FindConVar("mp_gamemode");
 	hCvarMotdTitle = CreateConVar("sm_cfgmotd_title", "AnneHappy电信服");
 	hCvarMotdUrl = CreateConVar("sm_cfgmotd_url", "http://dl.trygek.com/l4d_stats/index.php");  // 以后更换为数据库控制
 	hCvarIPUrl = CreateConVar("sm_cfgip_url", "http://dl.trygek.com/index.php");	// 以后更换为数据库控制
+	hCvarEnableAutoupdate.AddChangeHook(UpdateStatuChange);
+	hCvarGamemode.AddChangeHook(GamemodeChange);
+	hCvarLobbyControl.AddChangeHook(GamemodeChange);
 	RegConsoleCmd("sm_away", AFKTurnClientToSpe);
 	RegConsoleCmd("sm_afk", AFKTurnClientToSpe);
 	RegConsoleCmd("sm_spec", AFKTurnClientToSpe);
@@ -92,15 +106,17 @@ public void OnPluginStart()
 	RegAdminCmd("sm_restartmap", RestartMap, ADMFLAG_ROOT, "restarts map");
 	HookEvent("player_disconnect", PlayerDisconnect_Event, EventHookMode_Pre);
 	HookEvent("player_team", Event_PlayerTeam);
+	ChangeLobby();
 }
 
-public void OnAllPluginsLoaded(){
-	g_bGroupSystemAvailable = LibraryExists("veterans");
-	g_bUpdateSystemAvailable = LibraryExists("updater");
-	if(g_bUpdateSystemAvailable && hCvarEnableAutoupdate.IntValue){
+public void UpdateStatuChange(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	Updater_RemovePlugin();
+	if(g_bUpdateSystemAvailable && hCvarEnableAutoupdate.IntValue > 0){
+		//LogError("[updater]:%d", hCvarEnableAutoupdate.IntValue);
 		if(hCvarEnableAutoupdate.IntValue == 1)
 		{
-			Updater_AddPlugin(UPDATE_URL_ANNE);
+			Updater_AddPlugin(UPDATE_URL_ANNEALL);
 		}	
 		else if(hCvarEnableAutoupdate.IntValue == 2)
 		{
@@ -109,31 +125,43 @@ public void OnAllPluginsLoaded(){
 		{
 			Updater_AddPlugin(UPDATE_URL_VERSUS);
 		}
+		else if(hCvarEnableAutoupdate.IntValue == 4)
+		{
+			Updater_AddPlugin(UPDATE_URL_ANNE);
+		}
 		Updater_ForceUpdate();
 	}
+}
+
+public void GamemodeChange(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	ChangeLobby();
+}
+void ChangeLobby()
+{
+	if(hCvarLobbyControl.BoolValue)
+	{
+		char g_sCurrentGameMode[64];
+		GetConVarString(hCvarGamemode, g_sCurrentGameMode, sizeof(g_sCurrentGameMode));
+		if(StrContains(g_sCurrentGameMode, "versus", false) != -1)
+		{
+			SetConVarInt(hCvarSteamgroupExclusive, 0);
+		}
+		else
+		{
+			SetConVarInt(hCvarSteamgroupExclusive, 1);
+		}
+	}
+}
+
+public void OnAllPluginsLoaded(){
+	g_bGroupSystemAvailable = LibraryExists("veterans");
+	g_bUpdateSystemAvailable = LibraryExists("updater");
 }
 public void OnLibraryAdded(const char[] name)
 {
     if ( StrEqual(name, "veterans") ) { g_bGroupSystemAvailable = true; }
-	else if(StrEqual(name, "updater") && hCvarEnableAutoupdate.IntValue)
-	{
-		if(!g_bUpdateSystemAvailable)
-		{
-			g_bUpdateSystemAvailable = true;
-			if(hCvarEnableAutoupdate.IntValue == 1)
-			{
-				Updater_AddPlugin(UPDATE_URL_ANNE);
-			}	
-			else if(hCvarEnableAutoupdate.IntValue == 2)
-			{
-				Updater_AddPlugin(UPDATE_URL_NEKO);
-			}else if(hCvarEnableAutoupdate.IntValue == 3)
-			{
-				Updater_AddPlugin(UPDATE_URL_VERSUS);
-			}
-			Updater_ForceUpdate();
-		}
-	}
+	else if(StrEqual(name, "updater")) { g_bUpdateSystemAvailable = true; }
 }
 public void OnLibraryRemoved(const char[] name)
 {
@@ -291,18 +319,19 @@ public Action Timer_CheckDetay2(Handle Timer, int client)
 
 public void OnClientPutInServer(int client)
 {
+	if(client > 0 && IsClientConnected(client) && !IsFakeClient(client) && !hCvarEnableInf.BoolValue)
+	{
+		//ServerCommand("sm_addbot2");
+		CreateTimer(3.0, Timer_CheckDetay, client, TIMER_FLAG_NO_MAPCHANGE);
+		g_bEnableGetbotCommand[client] = true;
+	}
+
 	if(g_bGroupSystemAvailable){
 		if(!Veterans_Get(client, view_as<TARGET_OPTION_INDEX>(GOURP_MEMBER))){
 			ShowMotdToPlayer(client);
 		}
 	}else{
 		ShowMotdToPlayer(client);
-	}
-
-	if(client > 0 && IsClientConnected(client) && !IsFakeClient(client) && !hCvarEnableInf.BoolValue)
-	{
-		//ServerCommand("sm_addbot2");
-		CreateTimer(3.0, Timer_CheckDetay, client, TIMER_FLAG_NO_MAPCHANGE);
 	}
 	
 	if(IsServerLobbyFull() && hCvarEnableAutoRemoveLobby.IntValue)
@@ -415,12 +444,23 @@ public Action GetBot(int client, int args)
 {
 	if(!IsValidClient(client))
 		return Plugin_Handled;
-	if(IsSuivivorTeamFull()){
+	if(!g_bEnableGetbotCommand[client]){
+		PrintToChat(client,"\x03 你使用命令的速度太快了");
+	}
+	else if(IsSuivivorTeamFull()){
 		PrintToChat(client,"\x03 生还者团队已满，无其他生还者bot可供接管");
 	}else{
 		DrawSwitchCharacterMenu(client);
+		g_bEnableGetbotCommand[client] = false;
+		CreateTimer(GETBOTINTERVAL, ReEnableGetbotCommand, client);
 	}
 	return Plugin_Handled;
+}
+
+public Action ReEnableGetbotCommand(Handle timer, int client)
+{
+	g_bEnableGetbotCommand[client] = true;
+	return Plugin_Stop;
 }
 
 public void DrawSwitchCharacterMenu(int client)
@@ -595,5 +635,5 @@ int GetConnectedPlayer() {
 }
 
 void SetAllowLobby(int value) {
-	g_cvSvAllowLobbyCo.IntValue = value;
+	hCvarSvAllowLobbyCo.IntValue = value;
 }

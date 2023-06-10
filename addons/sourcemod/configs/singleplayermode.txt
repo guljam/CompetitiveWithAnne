@@ -181,6 +181,17 @@
 			"message" "20秒"
 		}
 	}
+	"刷特模式"
+	{
+		"sm_cvar inf_EnableAutoSpawnTime 1"
+		{
+			"message" "自动时间刷特"
+		}
+		"sm_cvar inf_EnableAutoSpawnTime 0"
+		{
+			"message" "固定时间刷特"
+		}
+	}
 	"特感最低生成距离"
 	{
 		"sm_cvar inf_SpawnDistanceMin 250.0"
@@ -329,6 +340,10 @@
 		"exec vote/hard_off.cfg"
 		{
 			"message" "关闭特感属性增强"
+		}
+		"sm_cvar specrates_fulltickspecnum 1"
+		{
+			"message" "限制旁观tick"
 		}
 	}
 	"武器配置"

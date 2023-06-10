@@ -354,7 +354,7 @@
 			}
 			"Field"
 			{
-				"min"		"80"
+				"min"		"75"
 				"max"		"100"
 			}
 		}
@@ -565,6 +565,14 @@
 		"start_dist"		"50.000000"
 		"start_extra_dist"	"0.000000"
 		"end_dist"			"50.000000"
+		"tank_ban_flow"
+		{
+			"Late Alley"
+			{
+				"min"		"58"
+				"max"		"70"
+			}
+		}
 	}
 	"c6m2_bedlam"
 	{
@@ -577,9 +585,14 @@
 		"horde_limit"		"150"
 		"tank_ban_flow"
 		{
+			"Sewer Drop"
+			{
+				"min"		"56"
+				"max"		"66"
+			}
 			"Event (bugged spawn)"
 			{
-				"min"		"70"
+				"min"		"72"
 				"max"		"100"
 			}
 		}
@@ -629,7 +642,7 @@
 		{
 			"Event (bugged spawn)"
 			{
-				"min"		"72"
+				"min"		"70"
 				"max"		"100"
 			}
 		}
@@ -1466,6 +1479,14 @@
 		"start_extra_dist"	"263.341949"
 		"end_point"			"3271.968750 7977.582031 -2256.968750"
 		"end_dist"			"335.011475"
+		"tank_ban_flow"
+		{
+			"1"
+			{
+				"min"		"70"
+				"max"		"100"
+			}
+		}
 	}
 	"l4d_ihm04_lumberyard"
 	{
@@ -1475,6 +1496,14 @@
 		"end_point"			"2004.079468 1037.415161 -188.618408"
 		"end_dist"			"304.708099"
 		"max_distance"		"600"
+		"tank_ban_flow"
+		{
+			"1"
+			{
+				"min"		"25"
+				"max"		"100"
+			}
+		}
 	}
 	"l4d_ihm05_lakeside"
 	{
@@ -1695,6 +1724,14 @@
 		"end_point"			"-8466.472656 7044.023438 -334.468750"
 		"end_dist"			"642.662781"
 		"max_distance"		"600"
+		"tank_ban_flow"
+		{
+			"1"
+			{
+				"min"		"75"
+				"max"		"100"
+			}
+		}
 	}
 	"l4d2_stadium5_stadium"
 	{
@@ -3055,7 +3092,7 @@
 			"Early spawn"
 			{
 				"min"		"0"
-				"max"		"34"
+				"max"		"36"
 			}
 		}
 	}
@@ -3071,7 +3108,7 @@
 			"Early spawn"
 			{
 				"min"		"0"
-				"max"		"24"
+				"max"		"26"
 			}
 		}
 	}
@@ -3087,7 +3124,7 @@
 			"Early spawn"
 			{
 				"min"		"0"
-				"max"		"24"
+				"max"		"26"
 			}
 		}
 	}
@@ -3104,6 +3141,11 @@
 			{
 				"min"		"0"
 				"max"		"20"
+			}
+			"Elevator"
+			{
+				"min"		"40"
+				"max"		"68"
 			}
 		}
 	}
@@ -3127,7 +3169,7 @@
 			}
 			"Late spawn"
 			{
-				"min"		"80"
+				"min"		"76"
 				"max"		"100"
 			}
 		}

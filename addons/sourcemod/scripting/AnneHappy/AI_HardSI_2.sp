@@ -71,7 +71,7 @@ public Plugin myinfo =
 	name 			= "Advance Special Infected AI",
 	author 			= "def075, Caibiii, 夜羽真白，东",
 	description 	= "Advanced Special Infected AI",
-	version 		= "2022.05.02",
+	version 		= "2022.12.16",
 	url 			= "https://github.com/Caibiii/AnneServer"
 }
 
@@ -96,25 +96,6 @@ void ConVarChanged_Cvars(ConVar convar, const char[] oldValue, const char[] newV
 // *********************
 //		   事件
 // *********************
-//特感激进进攻
-public Action L4D_OnFirstSurvivorLeftSafeArea(int firstSurvivor) 
-{
-	CreateTimer( 0.3, Timer_ForceInfectedAssault, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE );
-	return Plugin_Continue;
-}
-
-public Action Timer_ForceInfectedAssault( Handle timer) 
-{
-	BypassAndExecuteCommand("nb_assault");
-	return Plugin_Continue;
-}
-public void BypassAndExecuteCommand(char []strCommand)
-{
-	int flags = GetCommandFlags(strCommand);
-	SetCommandFlags(strCommand, flags & ~ FCVAR_CHEAT);
-	FakeClientCommand(GetRandomSurvivor(), "%s", strCommand);
-	SetCommandFlags(strCommand, flags);
-}
 public void OnMapStart()
 {
 	CreateTimer(1.0, Timer_MapStartMoveSpeed, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
@@ -283,7 +264,7 @@ public Action OnTankRunCmd(int client, int &buttons, float vel[3], float angles[
 			tankspeed = GetConVarFloat(FindConVar("z_tank_speed"));
 		}
 		int flags = GetEntityFlags(client);
-		if (flags == 65922)
+		if (!(flags & FL_ONGROUND))
 		{
 			buttons &= ~IN_ATTACK2;
 			return Plugin_Changed;
@@ -403,7 +384,7 @@ public Action OnTankRunCmd(int client, int &buttons, float vel[3], float angles[
 					{
 						// PrintToConsoleAll("[Ai-Tank]：克与最近生还者距离小于 1000，距离：%d，除以 1000：%d", dist, dist / 1000);
 						// 高度相减小于 0，说明自身处于生还下方，高度相减大于 0，则在生还上方
-						if (flags & FL_ONGROUND)
+						if (IsGrounded(client))
 						{
 							if (height < 0.0 && height < -100.0)
 							{
@@ -773,7 +754,10 @@ bool traceFilter(int entity, int mask, int self)
 	return entity != self;
 }
 
-
+//是否在地面上
+stock bool IsGrounded(int client) {
+	return GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") != -1;
+}
 
 // 特感挠门
 float GetCurrentSpeed(int client)

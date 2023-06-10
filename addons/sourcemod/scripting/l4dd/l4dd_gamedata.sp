@@ -1,6 +1,6 @@
 /*
 *	Left 4 DHooks Direct
-*	Copyright (C) 2022 Silvers
+*	Copyright (C) 2023 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -39,6 +39,12 @@ void LoadGameDataRules(GameData hGameData)
 	g_pGameRules = hGameData.GetAddress("GameRules");
 	ValidateAddress(g_pGameRules, "g_pGameRules", true);
 
+	g_pTheNavAreas = hGameData.GetAddress("TheNavAreas");
+	ValidateAddress(g_pTheNavAreas, "TheNavAreas", true);
+
+	g_pTheNavAreas_Size = g_pTheNavAreas + view_as<Address>(12);
+	g_pTheNavAreas_List = LoadFromAddress(g_pTheNavAreas, NumberType_Int32);
+
 	if( g_bLeft4Dead2 )
 	{
 		if( g_iScriptVMDetourIndex )
@@ -47,7 +53,26 @@ void LoadGameDataRules(GameData hGameData)
 		g_pScriptVM = hGameData.GetAddress("L4DD::ScriptVM");
 
 		ValidateAddress(g_pScriptVM, "g_pScriptVM", true);
+
+		g_iOff_NavAreaID = 140; // Hard-coding offset here, unlikely to ever change.
 	}
+	else
+	{
+		g_iOff_NavAreaID = 136; // Hard-coding offset here, unlikely to ever change.
+	}
+
+	#if defined DEBUG
+	#if DEBUG
+	PrintToServer("%12d == g_pGameRules", g_pGameRules);
+	PrintToServer("%12d == g_pTheNavAreas", g_pTheNavAreas);
+	PrintToServer("%12d == g_pTheNavAreas_List", g_pTheNavAreas_List);
+
+	if( g_bLeft4Dead2 )
+	{
+		PrintToServer("%12d == g_pScriptVM", g_pScriptVM);
+	}
+	#endif
+	#endif
 }
 
 void LoadGameData()
@@ -194,6 +219,17 @@ void LoadGameData()
 	}
 
 	StartPrepSDKCall(SDKCall_Entity);
+	if( PrepSDKCall_SetFromConf(hGameData, (g_bLeft4Dead2 || g_bLinuxOS) ? SDKConf_Signature : SDKConf_Virtual, "CBaseEntity::WorldSpaceCenter") == false )
+	{
+		LogError("Failed to find signature: \"CBaseEntity::WorldSpaceCenter\" (%s)", g_sSystem);
+	} else {
+		PrepSDKCall_SetReturnInfo(SDKType_Vector, SDKPass_ByRef);
+		g_hSDK_CBaseEntity_WorldSpaceCenter = EndPrepSDKCall();
+		if( g_hSDK_CBaseEntity_WorldSpaceCenter == null )
+			LogError("Failed to create SDKCall: \"CBaseEntity::WorldSpaceCenter\" (%s)", g_sSystem);
+	}
+
+	StartPrepSDKCall(SDKCall_Entity);
 	if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "CBaseEntity::ApplyLocalAngularVelocityImpulse") == false )
 	{
 		LogError("Failed to find signature: \"CBaseEntity::ApplyLocalAngularVelocityImpulse\" (%s)", g_sSystem);
@@ -245,6 +281,16 @@ void LoadGameData()
 		g_hSDK_TerrorNavArea_FindRandomSpot = EndPrepSDKCall();
 		if( g_hSDK_TerrorNavArea_FindRandomSpot == null )
 			LogError("Failed to create SDKCall: \"TerrorNavArea::FindRandomSpot\" (%s)", g_sSystem);
+	}
+
+	StartPrepSDKCall(SDKCall_Player);
+	if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "CTerrorPlayer::WarpToValidPositionIfStuck") == false )
+	{
+		LogError("Failed to find signature: \"CTerrorPlayer::WarpToValidPositionIfStuck\" (%s)", g_sSystem);
+	} else {
+		g_hSDK_CTerrorPlayer_WarpToValidPositionIfStuck = EndPrepSDKCall();
+		if( g_hSDK_CTerrorPlayer_WarpToValidPositionIfStuck == null )
+			LogError("Failed to create SDKCall: \"CTerrorPlayer::WarpToValidPositionIfStuck\" (%s)", g_sSystem);
 	}
 
 	if( g_bLeft4Dead2 )
@@ -305,7 +351,7 @@ void LoadGameData()
 	*/
 
 	StartPrepSDKCall(SDKCall_Raw);
-	if( PrepSDKCall_SetFromConf(hGameData, g_bLeft4Dead2 ?  SDKConf_Signature : SDKConf_Address, "CDirector::AreAllSurvivorsInFinaleArea") == false )
+	if( PrepSDKCall_SetFromConf(hGameData, g_bLeft4Dead2 ? SDKConf_Signature : SDKConf_Address, "CDirector::AreAllSurvivorsInFinaleArea") == false )
 	{
 		LogError("Failed to find signature: \"CDirector::AreAllSurvivorsInFinaleArea\" (%s)", g_sSystem);
 	} else {
@@ -736,20 +782,6 @@ void LoadGameData()
 		}
 
 		StartPrepSDKCall(SDKCall_Static);
-		if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "NavAreaTravelDistance") == false )
-		{
-			LogError("Failed to find signature: \"NavAreaTravelDistance\" (%s)", g_sSystem);
-		} else {
-			PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
-			PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
-			PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
-			PrepSDKCall_SetReturnInfo(SDKType_Float, SDKPass_Plain);
-			g_hSDK_NavAreaTravelDistance = EndPrepSDKCall();
-			if( g_hSDK_NavAreaTravelDistance == null )
-				LogError("Failed to create SDKCall: \"NavAreaTravelDistance\" (%s)", g_sSystem);
-		}
-
-		StartPrepSDKCall(SDKCall_Static);
 		if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "NavAreaBuildPath_ShortestPathCost") == false )
 		{
 			LogError("Failed to find signature: \"NavAreaBuildPath_ShortestPathCost\" (%s)", g_sSystem);
@@ -887,6 +919,21 @@ void LoadGameData()
 					LogError("Failed to create SDKCall: \"CDirector::GetScriptValueString\" (%s)", g_sSystem);
 		}
 		*/
+	}
+
+	StartPrepSDKCall(SDKCall_Static);
+	if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "NavAreaTravelDistance") == false )
+	{
+		LogError("Failed to find signature: \"NavAreaTravelDistance\" (%s)", g_sSystem);
+	} else {
+		PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+		PrepSDKCall_AddParameter(SDKType_Vector, SDKPass_ByRef);
+		if( g_bLeft4Dead2 )
+			PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain);
+		PrepSDKCall_SetReturnInfo(SDKType_Float, SDKPass_Plain);
+		g_hSDK_NavAreaTravelDistance = EndPrepSDKCall();
+		if( g_hSDK_NavAreaTravelDistance == null )
+			LogError("Failed to create SDKCall: \"NavAreaTravelDistance\" (%s)", g_sSystem);
 	}
 
 
@@ -1195,6 +1242,7 @@ void LoadGameData()
 			LogError("Failed to create SDKCall: \"CTerrorPlayer::SetShovePenalty\" (%s)", g_sSystem);
 	}
 
+	/*
 	StartPrepSDKCall(SDKCall_Player);
 	if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "CTerrorPlayer::SetNextShoveTime") == false )
 	{
@@ -1206,9 +1254,10 @@ void LoadGameData()
 		if( g_hSDK_CTerrorPlayer_SetNextShoveTime == null )
 			LogError("Failed to create SDKCall: \"CTerrorPlayer::SetNextShoveTime\" (%s)", g_sSystem);
 	}
+	*/
 
 	StartPrepSDKCall(SDKCall_Player);
-	if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Virtual, "CTerrorPlayer::DoAnimationEvent") == false )
+	if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "CTerrorPlayer::DoAnimationEvent") == false )
 	{
 		LogError("Failed to find signature: \"CTerrorPlayer::DoAnimationEvent\" (%s)", g_sSystem);
 	} else {
@@ -1671,6 +1720,7 @@ void LoadGameData()
 				LogError("Failed to create SDKCall: \"CDirector::SwapTeams\" (%s)", g_sSystem);
 		}
 
+		/*
 		StartPrepSDKCall(SDKCall_Raw);
 		if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "CDirector::AreTeamsFlipped") == false )
 		{
@@ -1681,6 +1731,7 @@ void LoadGameData()
 			if( g_hSDK_CDirector_AreTeamsFlipped == null )
 				LogError("Failed to create SDKCall: \"CDirector::AreTeamsFlipped\" (%s)", g_sSystem);
 		}
+		*/
 
 		StartPrepSDKCall(SDKCall_Raw);
 		if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "CDirector::StartRematchVote") == false )
@@ -1946,6 +1997,11 @@ void LoadGameData()
 		g_iOff_m_bFirstSurvivorLeftStartArea = hGameData.GetOffset("m_bFirstSurvivorLeftStartArea");
 		ValidateOffset(g_iOff_m_bFirstSurvivorLeftStartArea, "m_bFirstSurvivorLeftStartArea");
 	}
+	else
+	{
+		g_iOff_m_nFirstClassIndex = hGameData.GetOffset("CDirector::m_nFirstClassIndex");
+		ValidateOffset(g_iOff_m_nFirstClassIndex, "CDirector::m_nFirstClassIndex");
+	}
 
 	g_iOff_m_flow = hGameData.GetOffset("m_flow");
 	ValidateOffset(g_iOff_m_flow, "m_flow");
@@ -2034,11 +2090,11 @@ void LoadGameData()
 		g_iOff_OvertimeGraceTimer = hGameData.GetOffset("OvertimeGraceTimer");
 		ValidateOffset(g_iOff_OvertimeGraceTimer, "OvertimeGraceTimer");
 
-		g_iOff_m_iShovePenalty = hGameData.GetOffset("m_iShovePenalty");
-		ValidateOffset(g_iOff_m_iShovePenalty, "m_iShovePenalty");
+		// g_iOff_m_iShovePenalty = hGameData.GetOffset("m_iShovePenalty");
+		// ValidateOffset(g_iOff_m_iShovePenalty, "m_iShovePenalty");
 
-		g_iOff_m_fNextShoveTime = hGameData.GetOffset("m_fNextShoveTime");
-		ValidateOffset(g_iOff_m_fNextShoveTime, "m_fNextShoveTime");
+		// g_iOff_m_fNextShoveTime = hGameData.GetOffset("m_fNextShoveTime");
+		// ValidateOffset(g_iOff_m_fNextShoveTime, "m_fNextShoveTime");
 
 		g_iOff_m_preIncapacitatedHealth = hGameData.GetOffset("m_preIncapacitatedHealth");
 		ValidateOffset(g_iOff_m_preIncapacitatedHealth, "m_preIncapacitatedHealth");
@@ -2090,6 +2146,7 @@ void LoadGameData()
 	L4D2IntWeapon_Offsets[2] = hGameData.GetOffset("L4D2IntWeapon_ClipSize");
 	L4D2IntWeapon_Offsets[3] = hGameData.GetOffset("L4D2IntWeapon_Bucket");
 	L4D2IntWeapon_Offsets[4] = hGameData.GetOffset("L4D2IntWeapon_Tier");
+	L4D2IntWeapon_Offsets[5] = hGameData.GetOffset("L4D2IntWeapon_DefaultSize");
 	L4D2FloatWeapon_Offsets[0] = hGameData.GetOffset("L4D2FloatWeapon_MaxPlayerSpeed");
 	L4D2FloatWeapon_Offsets[1] = hGameData.GetOffset("L4D2FloatWeapon_SpreadPerShot");
 	L4D2FloatWeapon_Offsets[2] = hGameData.GetOffset("L4D2FloatWeapon_MaxSpread");
@@ -2151,8 +2208,8 @@ void LoadGameData()
 		PrintToServer("OnBeginRoundSetupTime = %d", g_iOff_OnBeginRoundSetupTime);
 		PrintToServer("m_iWitchCount = %d", g_iOff_m_iWitchCount);
 		PrintToServer("OvertimeGraceTimer = %d", g_iOff_OvertimeGraceTimer);
-		PrintToServer("m_iShovePenalty = %d", g_iOff_m_iShovePenalty);
-		PrintToServer("m_fNextShoveTime = %d", g_iOff_m_fNextShoveTime);
+		// PrintToServer("m_iShovePenalty = %d", g_iOff_m_iShovePenalty);
+		// PrintToServer("m_fNextShoveTime = %d", g_iOff_m_fNextShoveTime);
 		PrintToServer("m_preIncapacitatedHealth = %d", g_iOff_m_preIncapacitatedHealth);
 		PrintToServer("m_preIncapacitatedHealthBuffer = %d", g_iOff_m_preIncapacitatedHealthBuffer);
 		PrintToServer("m_maxFlames = %d", g_iOff_m_maxFlames);

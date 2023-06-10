@@ -16,6 +16,7 @@ ConVar
 	g_hCvarTankBhop,
 	g_hCvarWeapon,
 	g_hCvarCoop,
+	g_hAutoSpawnTimeControl,
 	g_hCvarPluginVersion;
 
 int 
@@ -31,11 +32,12 @@ public void OnPluginStart()
 	g_hCvarInfectedTime = FindConVar("versus_special_respawn_interval");
 	g_hCvarInfectedLimit = FindConVar("l4d_infected_limit");
 	g_hCvarTankBhop = FindConVar("ai_Tank_Bhop");
+	g_hAutoSpawnTimeControl = FindConVar("inf_EnableAutoSpawnTime");
 	g_hCvarWeapon = CreateConVar("ZonemodWeapon", "0", "", 0, false, 0.0, false, 0.0);
 	g_hCvarPluginVersion = CreateConVar("AnnePluginVersion", "Latest", "Anne插件版本");
 	HookConVarChange(g_hCvarInfectedTime, Cvar_InfectedTime);
 	if(g_hCvarInfectedLimit != null)
-	HookConVarChange(g_hCvarInfectedLimit, Cvar_InfectedLimit);
+		HookConVarChange(g_hCvarInfectedLimit, Cvar_InfectedLimit);
 	if(g_hCvarTankBhop != null)
 		HookConVarChange(g_hCvarTankBhop, CvarTankBhop);
 	HookConVarChange(g_hCvarWeapon, CvarWeapon);
@@ -53,7 +55,7 @@ public void OnPluginStart()
 	HookEvent("player_death", player_death, EventHookMode_Post);
 	RegConsoleCmd("sm_zs", ZiSha);
 	RegConsoleCmd("sm_kill", ZiSha);
-	RegConsoleCmd("sm_killall", killall);
+	RegAdminCmd("sm_killall", killall, ADMFLAG_BAN, "处死所有玩家");
 }
 public Action player_death(Handle event, char[] name, bool dontBroadcast)
 {
@@ -68,7 +70,6 @@ public Action ZiSha(int client, int args)
 	ForcePlayerSuicide(client);
 	return Plugin_Handled;
 }
-
 
 public Action killall(int client, int args)
 {
@@ -110,8 +111,8 @@ public void Cvar_InfectedLimit(ConVar convar, const char[] oldValue, const char[
 {
 	CommonLimit = GetConVarInt(g_hCvarInfectedLimit);
 	char tags[64];
-	GetConVarString(FindConVar("sv_tags"), tags, sizeof(tags));
-	if (Weapon == 2 && CommonLimit< 10 && (StrContains(tags, "anne", false) != -1 || StrContains(tags, "allcharger", false) != -1 || StrContains(tags, "witchparty", false) != -1))
+	GetConVarString(FindConVar("l4d_ready_cfg_name"), tags, sizeof(tags));
+	if (Weapon == 2 && CommonLimit< 10 && ( StrContains(tags, "WitchParty", false) != -1 || StrContains(tags, "AllCharger", false) != -1 || StrContains(tags, "AnneHappy", false) != -1))
 	{
 		ServerCommand("sm_cvar ZonemodWeapon 0");
 		PrintToChatAll("\x03因为不超过10特，AnneHappy+武器已经自动切换为AnneHappy武器");
@@ -134,7 +135,7 @@ public void CvarWeapon(ConVar convar, const char[] oldValue, const char[] newVal
 {
 	Weapon = GetConVarInt(g_hCvarWeapon);
 	char tags[64];
-	GetConVarString(FindConVar("sv_tags"), tags, sizeof(tags));
+	GetConVarString(FindConVar("l4d_ready_cfg_name"), tags, sizeof(tags));
 	if (Weapon == 1)
 	{
 		ServerCommand("exec vote/weapon/zonemod.cfg");
@@ -145,7 +146,7 @@ public void CvarWeapon(ConVar convar, const char[] oldValue, const char[] newVal
 	}
 	else if (Weapon == 2)
 	{
-		if(CommonLimit >= 10 || (StrContains(tags, "alone", false) != -1) || (StrContains(tags, "1vht", false) != -1))
+		if(CommonLimit >= 10 || (StrContains(tags, "Alone", false) != -1) || (StrContains(tags, "1vHunters", false) != -1))
 			ServerCommand("exec vote/weapon/AnneHappyPlus.cfg");
 		else
 		{
@@ -157,7 +158,7 @@ public void CvarWeapon(ConVar convar, const char[] oldValue, const char[] newVal
 }
 
 public void OnGameFrame(){
-	SteamWorks_SetGameDescription("电信Anne娱乐服,开心坐牢");
+	SteamWorks_SetGameDescription("AnneHappy药役");
 }
 
 void printinfo(int client = 0, bool All = true){
@@ -174,7 +175,7 @@ void printinfo(int client = 0, bool All = true){
 		
 	if(PLUGIN_VERSION[0] == '\0')
 	GetConVarString(g_hCvarPluginVersion, PLUGIN_VERSION, sizeof(PLUGIN_VERSION));
-	Format(buffer, sizeof(buffer), "%s \x03特感\x05[\x04%i特%i秒\x05] \x03电信服\x05[\x04%s\x05]", buffer, CommonLimit, CommonTime, PLUGIN_VERSION);
+	Format(buffer, sizeof(buffer), "%s \x03特感\x05[\x04%s%i特%i秒\x05] \x03电信服\x05[\x04%s\x05]", buffer, (g_hAutoSpawnTimeControl != null && g_hAutoSpawnTimeControl.BoolValue)?"自动":"固定", CommonLimit, CommonTime, PLUGIN_VERSION);
 	int max_dist = GetConVarInt(FindConVar("inf_SpawnDistanceMin"));
 	Format(buffer2, sizeof(buffer2), "\x03特感最近生成距离\x05[\x04%d\x05]", max_dist);
 	if(FindConVar("inf_TeleportCheckTime")){
@@ -218,6 +219,12 @@ public void OnClientPutInServer(int Client)
 		{
 			L4D_LobbyUnreserve();
 			ServerCommand("sm_cvar sv_allow_lobby_connect_only 0");
+		}
+		if(MaxPlayers == getBotLimit())
+		{
+			ConVar gjrj = FindConVar("sb_fix_enabled");
+			if(gjrj != null && gjrj.BoolValue)
+				SetConVarInt(gjrj, false);
 		}
 		printinfo(Client, false);
 	}
@@ -273,4 +280,9 @@ stock bool Incapacitated(int client)
 		if (!IsPlayerAlive(client)) bIsIncapped = true;
 	}
     return bIsIncapped;
+}
+
+stock int getBotLimit()
+{
+	return FindConVar("survivor_limit").IntValue;
 }

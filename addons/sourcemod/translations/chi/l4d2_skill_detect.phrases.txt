@@ -86,6 +86,18 @@
         "#format"   "{1:N},{2:s}" // 1:attacker 2:(bMelee) ? "melee-": ((bSniper) ? "headshot-" : ((bGL) ? "grenade-" : "") )
 		"chi"		"{olive}{1}{default} {blue}{2}空爆{default} 了 {olive}一只hunter{default}."
 	}
+	"Melee"
+	{
+		"chi"		"近战"
+	}
+	"HeadShot"
+	{
+		"chi"		"爆头"
+	}
+	"Grenade"
+	{
+		"chi"		"投掷武器"
+	}
     // hurt skeet / non-skeet
 	"HurtSkeet"
 	{
@@ -99,7 +111,7 @@
 	}
 	"Unchipped"
 	{
-		"chi"		"(如果hunter没有被打中过，就是空爆!)"
+		"chi"		"(如果hunter在空中被击杀，就是空爆!)"
 	}
     // crown
 	"CrownedWitch"
@@ -135,12 +147,12 @@
 	"SelfClearedTongue"
 	{
         "#format"   "{1:N},{2:N},{3:s}" // 1:attacker 2:victim 3:(withShove) ? Buffer : ""
-		"chi"		"{olive}{1}{default} 从 {olive}{2}{default}的舌头下 {blue}用推{default} {blue}自救{default} "
+		"chi"		"{olive}{1}{default} 从 {olive}{2}{default}的舌头下 {blue}{3}{default} {blue}自救{default} "
 	}
 	"SelfClearedTongueBot"
 	{
         "#format"   "{1:N},{2:s}" // 1:attacker 2:(withShove) ? Buffer : ""
-		"chi"		"{olive}{1}{default} 从 {olive}smoker{default}的舌头下 {blue}用推{default} {blue}自救{default} "
+		"chi"		"{olive}{1}{default} 从 {olive}smoker{default}的舌头下 {blue}{2}{default} {blue}自救{default} "
 	}
 	"Shoving"
 	{
@@ -181,12 +193,12 @@
 	"DeathCharged"
 	{
         "#format"   "{1:N},{2:N},{3:s},{4:i}" // 1:attacker 2:victim 3:(bCarried) ? "" : Buffer 4:RoundFloat(height)
-		"chi"		"{olive}{1}{default} {red}冲锋{default} 造成 {olive}{2} 死亡{default} {3}({red}高度{default}: {red}{4}{default})"
+		"chi"		"{olive}{1}{default} {red}冲锋{default} 造成 {olive}{2} 死亡{default} ({3})({red}高度{default}: {red}{4}{default})"
 	}
 	"DeathChargedBot"
 	{
         "#format"   "{1:N},{2:s},{3:i}" // 1:victim 2:(bCarried) ? "" : Buffer 3:RoundFloat(height)
-		"chi"		"{olive}Charger{default} {red}冲锋{default} 造成 {olive}{1}{default} 死亡{2}({red}高度{default}: {red}{3}{default})"
+		"chi"		"{olive}Charger{default} {red}冲锋{default} 造成 {olive}{1}{default} 死亡({2})({red}高度{default}: {red}{3}{default})"
 	}
 	"Bowling"
 	{
@@ -218,6 +230,10 @@
 	{ 
         "#format"   "{1:i},{2:s},{3:.1f}" // 1:streak 2:(streak > 1) ? "s" : "" 3:maxVelocity
 		"chi"		"{olive}你{default} 成功完成一次 {blue}{1} 连跳 ({blue}最高速度{default}: {olive}{3}{default})"
+	}
+	"PluralCount"
+	{
+		"chi"		""
 	}
     // car alarms
 	"CalarmHit"

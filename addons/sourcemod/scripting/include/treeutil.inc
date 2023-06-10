@@ -1,3 +1,4 @@
+// 团队类型
 enum
 {
 	TEAM_SPECTATOR = 1,
@@ -5,6 +6,7 @@ enum
 	TEAM_INFECTED
 }
 
+// 感染者类型
 enum
 {
 	ZC_SMOKER = 1,
@@ -15,6 +17,54 @@ enum
 	ZC_CHARGER,
 	ZC_WITCH,
 	ZC_TANK,
+}
+
+// PreferredSpecialDirection 值
+enum
+{
+	SPAWN_NO_PREFERENCE = -1,
+	SPAWN_ANYWHERE,
+	SPAWN_BEHIND_SURVIVORS,
+	SPAWN_NEAR_IT_VICTIM,
+	SPAWN_SPECIALS_IN_FRONT_OF_SURVIVORS,
+	SPAWN_SPECIALS_ANYWHERE,
+	SPAWN_FAR_AWAY_FROM_SURVIVORS,
+	SPAWN_ABOVE_SURVIVORS,
+	SPAWN_IN_FRONT_OF_SURVIVORS,
+	SPAWN_VERSUS_FINALE_DISTANCE,
+	SPAWN_LARGE_VOLUME,
+	SPAWN_NEAR_POSITION
+}
+
+// Nav Area Spawn Attribute
+enum
+{
+	EMPTY = 2,
+	STOP_SCAN = 4,
+	BATTLESTATION = 32,
+	FINALE = 64,
+	PLAYER_START = 128,
+	BATTLEFIELD = 256,
+	IGNORE_VISIBILITY = 512,
+	NOT_CLEARABLE = 1024,
+	CHECKPOINT = 2048,
+	OBSCURED = 4096,
+	NO_MOBS = 8192,
+	THREAT = 16384,
+	RESCUE_VEHICLE = 32768,
+	RESCUE_CLOSET = 65536,
+	ESCAPE_ROUTE = 131072,
+	DOOR_OR_DESTROYED_DOOR = 262144,
+	NOTHREAT = 524288,
+	LYINGDOWN = 1048576,
+	COMPASS_NORTH = 16777216,
+	COMPASS_NORTHEAST = 33554432,
+	COMPASS_EAST = 67108864,
+	COMPASS_EASTSOUTH = 134217728,
+	COMPASS_SOUTH = 268435456,
+	COMPASS_SOUTHWEST = 536870912,
+	COMPASS_WEST = 1073741824,
+	COMPASS_WESTNORTH = -2147483648
 }
 
 enum
@@ -81,6 +131,25 @@ stock const int IncappAnimations[SC_SIZE_SPACE][ID_PINNED_GETUPANIM_SIZE_SPACE] 
 
 stock static StringMap mSurvivorModelsTrie = null;
 
+stock const float INFECTED_SIZE_MIN[][3] =
+{
+	{-20.0, -20.0, 0.0},
+	{-25.0, -25.0, 0.0},
+	{-25.0, -25.0, 0.0},
+	{-20.0, -20.0, 0.0},
+	{-20.0, -20.0, 0.0},
+	{-25.0, -25.0, 0.0}
+};
+stock const float INFECTED_SIZE_MAX[ZC_CHARGER][3] =
+{
+	{20.0, 20.0, 80.0},
+	{25.0, 25.0, 65.0},
+	{25.0, 25.0, 60.0},
+	{20.0, 20.0, 70.0},
+	{20.0, 20.0, 40.0},
+	{25.0, 25.0, 70.0}
+};
+
 #define PLUGIN_SCRIPTLOGIC "plugin_scripting_logic_entity"
 #define COMMANDABOT_ATTACK "CommandABot({cmd = 0, bot = GetPlayerFromUserID(%i), target = GetPlayerFromUserID(%i)})"
 #define COMMANDABOT_MOVE   "CommandABot({cmd = 1, pos = Vector(%f, %f, %f), bot = GetPlayerFromUserID(%i)})"
@@ -90,45 +159,43 @@ stock static StringMap mSurvivorModelsTrie = null;
 // 			生还者
 // *************************
 // 判断是否有效玩家 id，有效返回 true，无效返回 false
+// @client：需要判断的生还者客户端索引
 stock bool IsValidClient(int client)
 {
-	if (client > 0 && client <= MaxClients && IsClientConnected(client) && IsClientInGame(client))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return client > 0 && client <= MaxClients && IsClientInGame(client);
 }
 // 判断生还者是否有效，有效返回 true，无效返回 false
+// @client：需要判断的生还者客户端索引
 stock bool IsValidSurvivor(int client)
 {
-	if (IsValidClient(client) && GetClientTeam(client) == view_as<int>(TEAM_SURVIVOR))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return IsValidClient(client) && GetClientTeam(client) == view_as<int>(TEAM_SURVIVOR);
 }
 // 判断玩家是否倒地，倒地返回 true，未倒地返回 false
 // @client：需要判断的生还者客户端索引
 stock bool IsClientIncapped(int client)
 {
-	if (!IsValidClient(client)) { return false; }
+	if (!IsValidClient(client) || !IsPlayerAlive(client)) { return false; }
 	return view_as<bool>(GetEntProp(client, Prop_Send, "m_isIncapacitated"));
 }
 // 判断生还者是否被控，被控返回 true，未被控返回 false
 // @client：需要判断的生还者客户端索引
 stock bool IsClientPinned(int client)
 {
-	if (!IsValidSurvivor(client)) { return false; }
+	if (!IsValidSurvivor(client) || !IsPlayerAlive(client)) { return false; }
 	return GetEntPropEnt(client, Prop_Send, "m_tongueOwner") > 0 
 			|| GetEntPropEnt(client, Prop_Send, "m_pounceAttacker") > 0 
 			|| GetEntPropEnt(client, Prop_Send, "m_carryAttacker") > 0 || GetEntPropEnt(client, Prop_Send, "m_pummelAttacker") > 0 
 			|| GetEntPropEnt(client, Prop_Send, "m_jockeyAttacker") > 0;
+}
+// 判断感染者是否正在控制生还者，正在控制返回 true，否则返回 false
+// @client：需要判断的感染者客户端索引
+stock bool IsPinningSurvivor(int client)
+{
+	if (!IsValidInfected(client) || !IsPlayerAlive(client)) { return false; }
+	return GetEntPropEnt(client, Prop_Send, "m_tongueVictim") > 0 || 
+			GetEntPropEnt(client, Prop_Send, "m_pounceVictim") > 0 || 
+			GetEntPropEnt(client, Prop_Send, "m_carryVictim") > 0 || GetEntPropEnt(client, Prop_Send, "m_pummelVictim") > 0 || 
+			GetEntPropEnt(client, Prop_Send, "m_jockeyVictim") > 0;
 }
 // 判断生还者被哪种类型的特感控制，生还者无效或未被控返回 -1
 // @client：需要判断的生还者客户端索引
@@ -142,20 +209,18 @@ stock int GetClientPinnedInfectedType(int client)
 	return -1;
 }
 // 判断生还者是否处于挂边状态，正在挂边返回 true，不在挂边返回 false
+// @client：需要判断的生还者客户端索引
 stock bool IsClientHanging(int client)
 {
-	if (IsValidSurvivor(client))
-	{
-		return view_as<bool>(GetEntProp(client, Prop_Send, "m_isHangingFromLedge", 1) || view_as<bool>(GetEntProp(client, Prop_Send, "m_isFallingFromLedge", 1)));
-	}
-	return false;
+	if (!IsValidSurvivor(client)) { return false; }
+	return view_as<bool>(GetEntProp(client, Prop_Send, "m_isHangingFromLedge", 1) || view_as<bool>(GetEntProp(client, Prop_Send, "m_isFallingFromLedge", 1)));
 }
 // 使用客户端 ID 识别生还者索引，有效返回生还者索引 ID，无效返回 -1
 stock int IdentifySurvivor(int client)
 {
 	if (IsValidSurvivor(client))
 	{
-		char model_name[42] = {'\0'};
+		char model_name[64] = {'\0'};
 		GetClientModel(client, model_name, sizeof(model_name));
 		return ModelToSorce(model_name);
 	}
@@ -186,43 +251,47 @@ stock void InitSurvivorModelTrie()
 // 获取当前客户端实血数量，返回实血数量，客户端无效则返回 -1
 stock int GetPermanentHealth(int client)
 {
-	if (IsValidClient(client))
-	{
-		return GetEntProp(client, Prop_Send, "m_iHealth");
-	}
-	return -1;
+	return IsValidClient(client) ? GetEntProp(client, Prop_Send, "m_iHealth") : -1;
 }
 // 获取当前生还者虚血数量，返回虚血数量，生还者无效则返回 -1
 stock int GetSurvivorTempHealth(int client)
 {
-	if (IsValidSurvivor(client))
-	{
-		int temp_health = RoundToCeil(GetEntPropFloat(client, Prop_Send, "m_healthBuffer") - ((GetGameTime() - GetEntPropFloat(client, Prop_Send, "m_healthBufferTime")) * GetConVarFloat(FindConVar("pain_pills_decay_rate")))) - 1;
-		return temp_health > 0 ? temp_health : 0;
-	}
-	return -1;
+	if (!IsValidSurvivor(client)) { return -1; }
+	int temp_health = RoundToCeil(GetEntPropFloat(client, Prop_Send, "m_healthBuffer") - ((GetGameTime() - GetEntPropFloat(client, Prop_Send, "m_healthBufferTime")) * GetConVarFloat(FindConVar("pain_pills_decay_rate")))) - 1;
+	return temp_health > 0 ? temp_health : 0;
 }
 // 获取当前生还者倒地次数，返回倒地次数，生还者无效则返回 -1
 stock int GetClientIncappedCount(int client)
 {
-	if (IsValidSurvivor(client))
-	{
-		return GetEntProp(client, Prop_Send, "m_currentReviveCount");
-	}
-	return -1;
+	return IsValidSurvivor(client) ? GetEntProp(client, Prop_Send, "m_currentReviveCount") : -1;
 }
-// 随机获取一个未死亡，未被控，未倒地的生还者，如有则返回生还者 id，无则返回 0
-stock int GetRandomMobileSurvivor()
+// 随机获取一个生还者，可指定是否仅选择（未死亡，未被控，未倒地）的生还者，有则返回生还者 id，无则返回 0
+// valid 参数为 false 仅过滤死亡生还者
+stock int GetRandomSurvivorAndValid(int excludeSurvivor = -1, bool valid)
 {
-	ArrayList survivorList = new ArrayList();
-	for (int client = 1; client <= MaxClients; client++)
+	ArrayList targetList = new ArrayList();
+	int i;
+	for(i = 1; i <= MaxClients; i++)
 	{
-		if (IsValidSurvivor(client)) { survivorList.Push(client); }
+		if (valid)
+		{
+			if (i == excludeSurvivor || !IsClientInGame(i) || GetClientTeam(i) != TEAM_SURVIVOR || !IsPlayerAlive(i) || IsClientIncapped(i) || IsClientPinned(i)) { continue; }
+			targetList.Push(i);
+		}
+		else
+		{
+			if (i == excludeSurvivor || !IsClientInGame(i) || GetClientTeam(i) != TEAM_SURVIVOR || !IsPlayerAlive(i)) { continue; }
+			targetList.Push(i);
+		}
 	}
-	if (survivorList.Length == 0) { return 0; }
-	int targetSurvivor = survivorList.Get(GetRandomInt(0, survivorList.Length - 1));
-	delete survivorList;
-	return targetSurvivor;
+	if (targetList.Length == 0)
+	{
+		delete targetList;
+		return 0;
+	}
+	i = targetList.Get(GetRandomIntInRange(0, targetList.Length - 1));
+	delete targetList;
+	return i;
 }
 // 获取距离某玩家最近的有效（未死亡，未倒地，未被控）生还者，如有则返回生还者 id，玩家无效或未找到则返回 0
 stock int GetClosetMobileSurvivor(int client, int exclude_client = -1)
@@ -241,8 +310,6 @@ stock int GetClosetMobileSurvivor(int client, int exclude_client = -1)
 			{
 				GetClientAbsOrigin(newTarget, targetPos);
 				float dist = GetVectorDistance(selfPos, targetPos);
-				// int Push(any value)，返回新增的索引值，集合中存储（0：距离，1：玩家索引）
-				// void Set(int index, any value, int block, bool asChar)
 				targetList.Set(targetList.Push(dist), newTarget, 1);
 			}
 		}
@@ -258,36 +325,52 @@ stock int GetClosetMobileSurvivor(int client, int exclude_client = -1)
 	}
 	return 0;
 }
+// 获取距离某玩家最近的生还者，不无视倒地，被控，如有则返回生还者 id，玩家无效或未找到则返回 0
+stock int GetClosetSurvivor(int client, int exclude_client = -1)
+{
+	if (!IsValidClient(client)) { return 0; }
+	static int target;
+	static float selfPos[3], targetPos[3];
+	static ArrayList targetList;
+	targetList = new ArrayList(2);
+	GetClientAbsOrigin(client, selfPos);
+	for (int newTarget = 1; newTarget <= MaxClients; newTarget++)
+	{
+		if (!IsClientInGame(newTarget) || !IsPlayerAlive(newTarget) || GetClientTeam(newTarget) != TEAM_SURVIVOR || newTarget == exclude_client) { continue; }
+		GetClientAbsOrigin(newTarget, targetPos);
+		targetList.Set(targetList.Push(GetVectorDistance(selfPos, targetPos)), newTarget, 1);
+	}
+	if (targetList.Length == 0)
+	{
+		delete targetList;
+		return 0;
+	}
+	targetList.Sort(Sort_Ascending, Sort_Float);
+	target = targetList.Get(0, 1);
+	delete targetList;
+	return target;
+}
+// 获取某个客户端到指定客户端的距离
+stock int GetClientDistance(int source, int dest)
+{
+	if (!IsValidClient(source) || !IsValidClient(dest)) { return -1; }
+	float selfPos[3], targetPos[3];
+	GetClientAbsOrigin(source, selfPos);
+	GetEntPropVector(dest, Prop_Send, "m_vecOrigin", targetPos);
+	return RoundToNearest(GetVectorDistance(selfPos, targetPos));
+}
 // 获取某玩家到最近或指定生还者的距离，如果存在有效最近或指定生还者则返回距离，无则返回 -1
 stock int GetClosetSurvivorDistance(int client, int specific_survivor = -1)
 {
-	if (IsValidClient(client))
-	{
-		float self_pos[3] = {0.0}, target_pos[3] = {0.0};
-		int target_survivor = -1;
-		GetClientAbsOrigin(client, self_pos);
-		if (IsValidSurvivor(specific_survivor))
-		{
-			target_survivor = specific_survivor;
-		}
-		else
-		{
-			target_survivor = GetClosetMobileSurvivor(client);
-		}
-		if (IsValidSurvivor(target_survivor))
-		{
-			GetEntPropVector(target_survivor, Prop_Send, "m_vecOrigin", target_pos);
-			return RoundToNearest(GetVectorDistance(self_pos, target_pos));
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else
-	{
-		return -1;
-	}
+	if (!IsValidClient(client)) { return -1; }
+	float selfPos[3] = {0.0}, targetPos[3] = {0.0};
+	int target = -1;
+	GetClientAbsOrigin(client, selfPos);
+	if (IsValidSurvivor(specific_survivor)) { target = specific_survivor; }
+	else { target = GetClosetMobileSurvivor(client); }
+	if (!IsValidSurvivor(target)) { return -1; }
+	GetEntPropVector(target, Prop_Send, "m_vecOrigin", targetPos);
+	return RoundToNearest(GetVectorDistance(selfPos, targetPos));
 }
 
 // *************************
@@ -296,55 +379,53 @@ stock int GetClosetSurvivorDistance(int client, int specific_survivor = -1)
 // 判断特感是否有效，有效返回 true，无效返回 false
 stock bool IsValidInfected(int client)
 {
-	if (IsValidClient(client) && GetClientTeam(client) == view_as<int>(TEAM_INFECTED))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return IsValidClient(client) && GetClientTeam(client) == TEAM_INFECTED;
 }
 // 判断是否 Bot 特感，是返回 true，否返回 false
 stock bool IsBotInfected(int client)
 {
-	if (IsValidInfected(client) && IsFakeClient(client))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return IsValidInfected(client) && IsFakeClient(client);
 }
-// 获取特感类型，成功返回特感类型，失败返回 0
+// 获取特感类型，成功返回特感类型，失败返回 -1
 stock int GetInfectedClass(int client)
 {
-	if (IsValidInfected(client))
-	{
-		return GetEntProp(client, Prop_Send, "m_zombieClass");
-	}
-	else
-	{
-		return 0;
-	}
+	return IsValidInfected(client) ? GetEntProp(client, Prop_Send, "m_zombieClass") : -1;
 }
 // 判断特感是否处于灵魂状态，是返回 1，否返回 0，无效返回 -1
-stock int IsInGhostState(int client)
+stock bool IsInGhostState(int client)
 {
-	if (IsValidInfected(client))
-	{
-		return view_as<bool>(GetEntProp(client, Prop_Send, "m_isGhost"));
-	}
-	else
-	{
-		return -1;
-	}
+	return IsValidInfected(client) ? view_as<bool>(GetEntProp(client, Prop_Send, "m_isGhost")) : false;
 }
 
 // *************************
 // 			其他类
 // *************************
+// 粗略判断本地图是不是三方图
+stock bool IsOfficalMap(){
+	char mapname[256];
+	GetCurrentMap(mapname, sizeof(mapname));
+	if(( (mapname[0]=='c') && (mapname[2]=='m') &&(mapname[4]=='_'))||((mapname[0]=='c')&&(mapname[3]=='m')&&(mapname[5]=='_')))
+		return true;
+	return false;
+}
+/*
+ * @Description: 判断当前客户端是否在地面
+ * @param: {client} 需要判断的客户端
+ * @return: {bool} 
+ */
+stock bool IsGrounded(int client) 
+{
+	return GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") != -1;
+}
+/*
+ * @Description: 判断当前客户端是否在地面
+ * @param: {client} 需要判断的客户端
+ * @return: {bool} 
+ */
+stock bool IsClientOnGround(int client)
+{
+	return IsValidClient(client) && GetEntPropEnt(client, Prop_Send, "m_hGroundEntity") != -1;
+}
 // 获取生还者数量，可指定是否包含 bot 和死亡的玩家
 stock int GetSurvivorCount(bool include_bot = true, bool include_death = false)
 {
@@ -597,4 +678,18 @@ stock int GetServerTickRate()
 		tick_rate = RoundToNearest(1.0 / GetTickInterval());
 	}
 	return tick_rate;
+}
+
+// 获取随机范围内整数
+stock int GetRandomIntInRange(int min, int max)
+{
+	int num = GetURandomInt();
+	if (num == 0) { num++; }
+	return RoundToCeil(float(num) / (float(2147483647) / float(max - min + 1))) + min - 1;
+}
+
+// 获取随机范围内小数
+stock float GetRandomFloatInRange(float min, float max)
+{
+	return (GetURandomFloat() * (max - min)) + min;
 }

@@ -23,7 +23,10 @@ public Plugin myinfo =
 // ConVars
 ConVar g_hAllowBhop, g_hBhopSpeed, g_hChargeDist, g_hExtraTargetDist, g_hAimOffset, g_hChargerTarget, g_hAllowMeleeAvoid, g_hChargerMeleeDamage, g_hChargeInterval;
 // Float
-float charge_interval[MAXPLAYERS + 1];
+float
+	charge_interval[MAXPLAYERS + 1] = {0.0},
+	min_dist,
+	max_dist;
 // Bools
 bool can_attack_pinned[MAXPLAYERS + 1] = {false}, is_charging[MAXPLAYERS + 1] = {false};
 // Ints
@@ -41,8 +44,16 @@ public void OnPluginStart()
 	g_hChargerMeleeDamage = CreateConVar("ai_ChargerMeleeDamage", "350", "Charger 血量小于这个值，将不会直接冲锋拿着近战的生还者", CVAR_FLAG, true, 0.0);
 	g_hChargerTarget = CreateConVar("ai_ChargerTarget", "1", "Charger目标选择：1=自然目标选择，2=优先取最近目标，3=优先撞人多处", CVAR_FLAG, true, 1.0, true, 2.0);
 	g_hChargeInterval = FindConVar("z_charge_interval");
+	g_hExtraTargetDist.AddChangeHook(extraTargetDistChangeHandler);
 	// HookEvents
 	HookEvent("player_spawn", evt_PlayerSpawn);
+	// GetOtherTarget
+	getOtherRangedTarget();
+}
+
+void extraTargetDistChangeHandler(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	getOtherRangedTarget();
 }
 
 // 事件
@@ -66,7 +77,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		if (L4D_IsPlayerStaggering(client))
 			return Plugin_Continue;
 		bool has_sight = view_as<bool>(GetEntProp(client, Prop_Send, "m_hasVisibleThreats"));
-		int target = GetClientAimTarget(client, true), flags = GetEntityFlags(client), closet_survivor_distance = GetClosetSurvivorDistance(client), ability = GetEntPropEnt(client, Prop_Send, "m_customAbility");
+		int target = GetClientAimTarget(client, true), closet_survivor_distance = GetClosetSurvivorDistance(client), ability = GetEntPropEnt(client, Prop_Send, "m_customAbility");
 		float self_pos[3] = {0.0}, target_pos[3] = {0.0}, vec_speed[3] = {0.0}, vel_buffer[3] = {0.0}, cur_speed = 0.0;
 		GetClientAbsOrigin(client, self_pos);
 		GetEntPropVector(client, Prop_Data, "m_vecVelocity", vec_speed);
@@ -100,7 +111,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 					// 查找冲锋范围内是否有其他正在看着自身的玩家
 					for (int i = 0; i < ranged_index[client]; i++)
 					{
-						if (ranged_client[client][i] != target && !IsClientPinned(ranged_client[client][i]) && Is_Target_Watching_Attacker(client, ranged_client[client][i], g_hAimOffset.IntValue) && !Is_InGetUp_Or_Incapped(ranged_client[client][i]) && GetEntProp(ability, Prop_Send, "m_isCharging") != 1 && (flags & FL_ONGROUND))
+						if (ranged_client[client][i] != target && !IsClientPinned(ranged_client[client][i]) && Is_Target_Watching_Attacker(client, ranged_client[client][i], g_hAimOffset.IntValue) && !Is_InGetUp_Or_Incapped(ranged_client[client][i]) && GetEntProp(ability, Prop_Send, "m_isCharging") != 1 && IsGrounded(client))
 						{
 							SetCharge(client);
 							float new_target_pos[3] = {0.0};
@@ -115,7 +126,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 					}
 				}
 				// 目标正在看着自身，自身可以冲锋，目标没有拿着近战，且不在倒地或起身状态时则直接冲锋，目标拿着近战，则转到 OnChooseVictim 处理，转移新目标或继续挥拳
-				else if (Is_Target_Watching_Attacker(client, target, g_hAimOffset.IntValue) && !Client_MeleeCheck(target) && !Is_InGetUp_Or_Incapped(target) && GetEntProp(ability, Prop_Send, "m_isCharging") != 1 && (flags & FL_ONGROUND))
+				else if (Is_Target_Watching_Attacker(client, target, g_hAimOffset.IntValue) && !Client_MeleeCheck(target) && !Is_InGetUp_Or_Incapped(target) && GetEntProp(ability, Prop_Send, "m_isCharging") != 1 && IsGrounded(client))
 				{
 					SetCharge(client);
 					buttons |= IN_ATTACK2;
@@ -139,7 +150,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 					for (int i = 0; i < ranged_index[client]; i++)
 					{
 						// 循环时，由于 ranged_index 增加时，数组中一定为有效生还者，故无需判断是否是有效生还者
-						if (!IsClientPinned(ranged_client[client][i]) && Is_Target_Watching_Attacker(client, ranged_client[client][i], g_hAimOffset.IntValue) && !Is_InGetUp_Or_Incapped(ranged_client[client][i]) && GetEntProp(ability, Prop_Send, "m_isCharging") != 1 && (flags & FL_ONGROUND))
+						if (!IsClientPinned(ranged_client[client][i]) && Is_Target_Watching_Attacker(client, ranged_client[client][i], g_hAimOffset.IntValue) && !Is_InGetUp_Or_Incapped(ranged_client[client][i]) && GetEntProp(ability, Prop_Send, "m_isCharging") != 1 && IsGrounded(client))
 						{
 							SetCharge(client);
 							float new_target_pos[3] = {0.0};
@@ -169,10 +180,10 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 			buttons |= IN_ATTACK2;
 		}
 		// 连跳，并阻止冲锋，可以攻击被控的人的时，将最小距离置 0，连跳追上被控的人
-		int min_dist = can_attack_pinned[client] ? 60 : g_hChargeDist.IntValue;
-		if (has_sight && g_hAllowBhop.BoolValue && min_dist < closet_survivor_distance < 10000 && cur_speed > 175.0 && IsValidSurvivor(target))
+		int bhopMinDist = can_attack_pinned[client] ? 60 : g_hChargeDist.IntValue;
+		if (has_sight && g_hAllowBhop.BoolValue && bhopMinDist < closet_survivor_distance < 10000 && cur_speed > 175.0 && IsValidSurvivor(target))
 		{
-			if (flags & FL_ONGROUND)
+			if (IsGrounded(client))
 			{
 				GetClientAbsOrigin(target, target_pos);
 				vel_buffer = CalculateVel(self_pos, target_pos, g_hBhopSpeed.FloatValue);
@@ -201,22 +212,8 @@ public Action L4D2_OnChooseVictim(int specialInfected, int &curTarget)
 	{
 		if(GetEntPropEnt(specialInfected, Prop_Send, "m_pummelVictim") > 0 || GetEntPropEnt(specialInfected, Prop_Send, "m_carryVictim") > 0)
 			return Plugin_Continue;
-		float self_pos[3] = {0.0}, target_pos[3] = {0.0}, min_dist = 0.0, max_dist = 0.0;
+		float self_pos[3] = {0.0}, target_pos[3] = {0.0};
 		GetClientEyePosition(specialInfected, self_pos);
-		// 获取在冲锋范围内的目标，从 Cvar 中获取最下与最大范围
-		char cvar_dist[16] = {'\0'};
-		g_hExtraTargetDist.GetString(cvar_dist, sizeof(cvar_dist));
-		if (strcmp(cvar_dist, NULL_STRING) != 0)
-		{
-			char result_dist[2][16];
-			ExplodeString(cvar_dist, ",", result_dist, 2, 16);
-			min_dist = StringToFloat(result_dist[0]);
-			max_dist = StringToFloat(result_dist[1]);
-		}
-		else
-		{
-			max_dist = 350.0;
-		}
 		FindRangedClients(specialInfected, min_dist, max_dist);
 		if (IsValidSurvivor(curTarget) && IsPlayerAlive(curTarget))
 		{
@@ -604,4 +601,21 @@ float Get_Player_Aim_Offset(int client, int target)
 		return result_angle;
 	}
 	return -1.0;
+}
+
+void getOtherRangedTarget()
+{
+	// 获取在冲锋范围内的目标，从 Cvar 中获取最下与最大范围
+	static char cvar_dist[16], result_dist[2][16];
+	g_hExtraTargetDist.GetString(cvar_dist, sizeof(cvar_dist));
+	if (!IsNullString(cvar_dist))
+	{
+		ExplodeString(cvar_dist, ",", result_dist, 2, sizeof(result_dist[]));
+		min_dist = StringToFloat(result_dist[0]);
+		max_dist = StringToFloat(result_dist[1]);
+	}
+	else
+	{
+		max_dist = 350.0;
+	}
 }

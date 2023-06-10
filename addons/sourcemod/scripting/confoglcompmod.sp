@@ -3,7 +3,7 @@
 
 #define DEBUG_ALL					0
 
-#define PLUGIN_VERSION				"2.3.5"
+#define PLUGIN_VERSION				"2.3.6"
 
 // Using these macros, you can disable unnecessary modules,
 // and they will not be included in the plugin at compile time,
@@ -229,7 +229,7 @@ public void OnPluginStart()
 #endif
 
 	//Other
-	AddCustomServerTag("confogl");
+	//AddCustomServerTag("confogl");
 	//AddCustomServerTag("hidden");
 }
 

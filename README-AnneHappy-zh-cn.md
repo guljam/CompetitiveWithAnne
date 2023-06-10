@@ -1,28 +1,32 @@
 # **AnneHappy 插件带上对抗插件包**
 * 为了保持插件包结构和上游一样方便同步，这个插件包将不会带有nav修改文件和跳舞插件的模型与声音，~~AnneHappy的Nav修改文件请到我的[anne项目](https://github.com/fantasylidong/anne)中下载~~ 新解决方案，到[release页面](https://github.com/fantasylidong/CompetitiveWithAnne/releases)下载整合插件包，里面有
 * 当前版本已经是进入stable模式，大部分核心插件更新可以通过join插件自动更新，不用那么频繁检测是否有更新了
-* 如果没有数据库，建议下[release页面](https://github.com/fantasylidong/CompetitiveWithAnne/releases)里的nomysql版本，删除了必须需要数据库的插件，rpg插件更改为caibiii的rpg老插件
+* 如果没有数据库，建议下[release页面](https://github.com/fantasylidong/CompetitiveWithAnne/releases)里的norank版本或者nomysql版本
+* norank版本是用电信服的rpg插件，只删除了排名，作弊检测和sourcebans插件，缺点就是每次进服务器需要自己设置出门近战，不想自己写了，有需求的写完可以pull request到我的项目里
+* nomysql版本是删除了所有和数据库相关的插件
+
 
 ## **AnneHappy 会自动更新的核心插件**
-- "Path_SM/plugins/optional/AnneHappy/ai_boomer_new.smx"
-- "Path_SM/plugins/optional/AnneHappy/ai_charger_2.smx"
-- "Path_SM/plugins/optional/AnneHappy/AI_HardSI_2.smx"
-- "Path_SM/plugins/optional/AnneHappy/ai_hunter_new.smx"
-- "Path_SM/plugins/optional/AnneHappy/ai_smoker_new.smx"
-- "Path_SM/plugins/optional/AnneHappy/ai_spitter_new.smx"
-- "Path_SM/plugins/optional/AnneHappy/ai_jockey_new.smx"
-- "Path_SM/plugins/optional/AnneHappy/ai_tank_2.smx"
-- "Path_SM/plugins/optional/AnneHappy/infected_control.smx"
-- "Path_SM/plugins/optional/AnneHappy/text.smx"
-- "Path_SM/plugins/optional/AnneHappy/server.smx"
-- "Path_SM/plugins/optional/AnneHappy/witch_announce.smx"
-- "Path_SM/plugins/optional/AnneHappy/SI_Target_limit.smx"
-- "Path_SM/plugins/optional/AnneHappy/l4d_target_override.smx"
-- "Path_SM/plugins/optional/AnneHappy/l4d2_Anne_stuck_tank_teleport.smx"
-- "Path_SM/plugins/extend/rpg.smx"
-- "Path_SM/plugins/extend/l4d_stats.smx"
-- "Path_SM/plugins/extend/join.smx"
-- "Path_SM/plugins/extend/server_name.smx"
+- Path_SM/plugins/optional/AnneHappy/ai_boomer_new.smx"
+- Path_SM/plugins/optional/AnneHappy/ai_boomer_2.smx"
+- Path_SM/plugins/optional/AnneHappy/ai_charger_2.smx"
+- Path_SM/plugins/optional/AnneHappy/AI_HardSI_2.smx"
+- Path_SM/plugins/optional/AnneHappy/ai_hunter_new.smx"
+- Path_SM/plugins/optional/AnneHappy/ai_smoker_new.smx"
+- Path_SM/plugins/optional/AnneHappy/ai_spitter_new.smx"
+- Path_SM/plugins/optional/AnneHappy/ai_jockey_new.smx"
+- Path_SM/plugins/optional/AnneHappy/ai_jockey_2.smx"
+- Path_SM/plugins/optional/AnneHappy/ai_tank_2.smx"
+- Path_SM/plugins/optional/AnneHappy/infected_control.smx"
+- Path_SM/plugins/optional/AnneHappy/text.smx"
+- Path_SM/plugins/optional/AnneHappy/server.smx"
+- Path_SM/plugins/optional/AnneHappy/witch_announce.smx"
+- Path_SM/plugins/optional/AnneHappy/SI_Target_limit.smx"
+- Path_SM/plugins/optional/AnneHappy/l4d_target_override.smx"
+- Path_SM/plugins/optional/AnneHappy/l4d2_Anne_stuck_tank_teleport.smx"
+- Path_SM/plugins/extend/join.smx"
+- Path_SM/plugins/extend/server_name.smx"
+- Path_SM/plugins/extend/l4d2_scripted_hud.smx"
 
 ## **关于新增模式:**
 
@@ -47,6 +51,7 @@
 * ~~AnneHappy模式猴子有可能会将生还者传送到虚空【重要问题】，有临时修复，会在0.1s后将虚空的生还者传送回来，如果你找到问题是怎么发生的，请反馈一下，谢谢~~ 基本消失，但是不知道是后面怎么修改修复的
 * AnneHappy模式过关统计会把这一章节所有统计信息全部记录，因为对抗模式每回合不会清除统计信息（原来的方式不能正确载入对抗地图和对抗的梯子和nav）【我觉得这是Feature不是Bug，笑，反正普通信息mvp插件能够正常记录了，所以也不准备修改了】
 * ~~对抗原生的更换队伍不能用，使用join.smx插件进行换队(!inf !infected 感染 !jg !join 生还 !spec !afk旁观）~~ 已解决
+* 删除了zonemod插件包新加的action拓展和l4d2_shove_fix插件，因为会造成药役模式sv剧烈波动，效果虽然不错，但是性能稳定性要求更高，所以删除
 
 ## **无数据库服务器安装问题:**
 > 由于我的数据库不会对外放开，所以有些插件你需要删除或者自建数据库[数据库脚本在项目内]
